@@ -44,6 +44,8 @@ Response:
 }
 ```
 
+Can be used while a game is already running (late join), as long as the room exists.
+
 #### `autoJoinRoom`
 
 ```ts
@@ -128,15 +130,15 @@ Response:
 revealCategory(data: { roomCode: string; playerId: string })
 ```
 
-Reader only. Reveals prompt to all players and starts timer.
+Host only. Reveals prompt to all players.
 
-#### `buzz`
+#### `rerollPrompt`
 
 ```ts
-buzz(data: { roomCode: string; playerId: string })
+rerollPrompt(data: { roomCode: string; playerId: string })
 ```
 
-Adds player to buzzer order if round is open and player has not buzzed yet.
+Host only. Only before reveal. Draws a new category/task (and letter if required by task).
 
 #### `selectWinner`
 
@@ -144,7 +146,7 @@ Adds player to buzzer order if round is open and player has not buzzed yet.
 selectWinner(data: { roomCode: string; playerId: string; winnerId: string })
 ```
 
-Reader only. `winnerId` must exist in current `buzzerOrder`.
+Host only. `winnerId` must be a valid non-host player in the current room.
 
 #### `skipRound`
 
@@ -152,7 +154,7 @@ Reader only. `winnerId` must exist in current `buzzerOrder`.
 skipRound(data: { roomCode: string; playerId: string })
 ```
 
-Reader only. Finalizes round without winner.
+Host or owner only. Finalizes round without winner.
 
 ### Meta
 
@@ -189,19 +191,11 @@ Important fields in current `RoomView`:
 - `currentRound.task`
 - `currentRound.letter` (`string | null`)
 
-Before reveal, non-readers receive:
+Before reveal, non-host players receive:
 
 - `currentRound.category = null`
 - `currentRound.task = null`
 - `currentRound.letter = null`
-
-### `buzzerAlert`
-
-```ts
-buzzerAlert()
-```
-
-Fired when a valid buzz is registered.
 
 ## Room Lifecycle
 
@@ -213,13 +207,15 @@ Fired when a valid buzz is registered.
 
 ## Gameplay Lifecycle
 
-1. `startGame` creates round and picks reader.
-2. Reader initially sees prompt: category + task + optional letter.
-3. Reader emits `revealCategory`; server opens buzzer and starts timer.
-4. Players emit `buzz`; server keeps ordered list and emits `buzzerAlert`.
-5. Reader emits `selectWinner` or `skipRound`.
-6. Server finalizes round, updates scores, transitions phase.
-7. After `maxRounds`, phase transitions to `ended`.
+1. `startGame` creates round and assigns host as reader.
+2. Host initially sees prompt: category + task + optional letter.
+3. Host can optionally emit `rerollPrompt` (before reveal).
+4. Host emits `revealCategory`.
+5. Players answer out loud.
+6. Host emits `selectWinner`; host or owner can emit `skipRound`.
+7. On `selectWinner`, winner gets a point and becomes the next host/reader.
+8. Server finalizes round, updates scores, transitions phase.
+9. After `maxRounds`, phase transitions to `ended`.
 
 ## Error Handling
 
@@ -228,7 +224,7 @@ Fired when a valid buzz is registered.
   - room/player not found
   - invalid input
   - invalid resume token
-  - host-only or reader-only violations
+  - host-only / owner-or-host violations
   - wrong game phase for requested action
 
 Example:
@@ -236,4 +232,3 @@ Example:
 ```ts
 { ok: false, error: 'Room not found' }
 ```
-

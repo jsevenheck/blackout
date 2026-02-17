@@ -11,7 +11,6 @@ function toPlayerView(room: Room): PlayerView[] {
     score: p.score,
     connected: p.connected,
     isHost: p.isHost,
-    hasBuzzed: p.hasBuzzed,
   }));
 }
 
@@ -19,7 +18,7 @@ function toRoundView(room: Room, playerId: string): RoundView | null {
   const round = room.currentRound;
   if (!round) return null;
 
-  const isReader = round.readerId === playerId;
+  const isReader = room.hostId === playerId;
   const showCategory = isReader || round.revealed;
 
   return {
@@ -28,17 +27,15 @@ function toRoundView(room: Room, playerId: string): RoundView | null {
     task: showCategory ? round.task : null,
     letter: showCategory ? round.letter : null,
     readerId: round.readerId,
-    buzzerState: round.buzzerState,
-    buzzerOrder: round.buzzerOrder,
     winnerId: round.winnerId,
     revealed: round.revealed,
-    timerEnd: round.timerEnd,
   };
 }
 
 function toRoomView(room: Room, playerId: string): RoomView {
   return {
     code: room.code,
+    ownerId: room.ownerId,
     phase: room.phase,
     players: toPlayerView(room),
     language: room.language,
@@ -54,14 +51,6 @@ export function broadcastRoom(nsp: BlackoutNamespace, room: Room): void {
     if (player.socketId && player.connected) {
       const view = toRoomView(room, player.id);
       nsp.to(player.socketId).emit('roomUpdate', view);
-    }
-  }
-}
-
-export function broadcastBuzzerAlert(nsp: BlackoutNamespace, room: Room): void {
-  for (const player of Object.values(room.players)) {
-    if (player.socketId && player.connected) {
-      nsp.to(player.socketId).emit('buzzerAlert');
     }
   }
 }

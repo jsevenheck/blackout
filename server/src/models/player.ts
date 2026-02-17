@@ -13,7 +13,6 @@ export function createPlayer(name: string, isHost: boolean): Player {
     connected: true,
     isHost,
     socketId: null,
-    hasBuzzed: false,
   };
 }
 

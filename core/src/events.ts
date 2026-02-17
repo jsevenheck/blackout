@@ -42,7 +42,7 @@ export interface ClientToServerEvents {
   ) => void;
 
   revealCategory: (data: { roomCode: string; playerId: string }) => void;
-  buzz: (data: { roomCode: string; playerId: string }) => void;
+  rerollPrompt: (data: { roomCode: string; playerId: string }) => void;
   selectWinner: (data: { roomCode: string; playerId: string; winnerId: string }) => void;
   skipRound: (data: { roomCode: string; playerId: string }) => void;
 
@@ -52,5 +52,4 @@ export interface ClientToServerEvents {
 
 export interface ServerToClientEvents {
   roomUpdate: (room: RoomView) => void;
-  buzzerAlert: () => void;
 }

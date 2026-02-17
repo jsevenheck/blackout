@@ -9,6 +9,7 @@ import type { Room } from '../core/src/types';
 function makeRoom(): Room {
   return {
     code: 'TEST',
+    ownerId: 'p1',
     hostId: 'p1',
     phase: 'lobby',
     players: {},

@@ -19,7 +19,7 @@ async function joinRoom(page: Page, name: string, code: string): Promise<void> {
   await page.getByPlaceholder('Your name').fill(name);
   await page.getByPlaceholder('Room code').fill(code);
   await page.getByRole('button', { name: 'Join Room' }).click();
-  await page.waitForSelector('.code');
+  await page.waitForSelector('.code, .game-round');
 }
 
 test.describe('Blackout Game', () => {
@@ -56,5 +56,32 @@ test.describe('Blackout Game', () => {
     await ctx1.close();
     await ctx2.close();
     await ctx3.close();
+  });
+
+  test('late join works with room code after game start', async ({ browser }) => {
+    const hostCtx = await browser.newContext();
+    const p2Ctx = await browser.newContext();
+    const p3Ctx = await browser.newContext();
+    const lateCtx = await browser.newContext();
+
+    const hostPage = await hostCtx.newPage();
+    const p2Page = await p2Ctx.newPage();
+    const p3Page = await p3Ctx.newPage();
+    const latePage = await lateCtx.newPage();
+
+    const roomCode = await createRoom(hostPage, 'Host');
+    await joinRoom(p2Page, 'Bob', roomCode);
+    await joinRoom(p3Page, 'Carol', roomCode);
+
+    await hostPage.getByRole('button', { name: 'Start Game' }).click();
+    await hostPage.waitForSelector('.game-round');
+
+    await joinRoom(latePage, 'Dave', roomCode);
+    await latePage.waitForSelector('.game-round');
+
+    await hostCtx.close();
+    await p2Ctx.close();
+    await p3Ctx.close();
+    await lateCtx.close();
   });
 });

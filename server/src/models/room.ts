@@ -34,6 +34,7 @@ export function createRoom(
 
   const room: Room = {
     code,
+    ownerId: host.id,
     hostId: host.id,
     phase: 'lobby',
     players: { [host.id]: host },

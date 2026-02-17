@@ -16,8 +16,9 @@ export const useGameStore = defineStore('game', {
     isHost(): boolean {
       return this.self?.isHost ?? false;
     },
+    isOwner: (state) => state.room?.ownerId === state.playerId,
     phase: (state) => state.room?.phase ?? 'lobby',
-    isReader: (state) => state.room?.currentRound?.readerId === state.playerId,
+    isReader: (state) => state.room?.players.find((p) => p.id === state.playerId)?.isHost ?? false,
     currentRound: (state) => state.room?.currentRound,
   },
   actions: {

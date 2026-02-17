@@ -75,6 +75,10 @@ function saveExcludedLetters() {
       >
         <span class="player-name">{{ player.name }}</span>
         <span
+          v-if="store.room?.ownerId === player.id"
+          class="badge owner"
+        >Owner</span>
+        <span
           v-if="player.isHost"
           class="badge host"
         >Host</span>
@@ -243,6 +247,11 @@ function saveExcludedLetters() {
   color: #fff;
 }
 
+.badge.owner {
+  background: #0ea5e9;
+  color: #fff;
+}
+
 .badge.offline {
   background: #3f3f46;
   color: #71717a;
@@ -307,12 +316,6 @@ function saveExcludedLetters() {
   border-color: #8b5cf6;
 }
 
-.letters-save {
-  width: auto;
-  padding: 0 0.8rem;
-  font-size: 0.85rem;
-}
-
 .rounds-value {
   font-size: 1.5rem;
   font-weight: 700;
@@ -333,6 +336,13 @@ function saveExcludedLetters() {
 
 .btn-sm:hover {
   border-color: #8b5cf6;
+}
+
+.btn-sm.letters-save {
+  width: auto;
+  min-width: 3.5rem;
+  padding: 0 0.8rem;
+  font-size: 0.85rem;
 }
 
 .btn {

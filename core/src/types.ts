@@ -1,5 +1,4 @@
 export type Phase = 'lobby' | 'playing' | 'roundEnd' | 'ended';
-export type BuzzerState = 'waiting' | 'open' | 'locked';
 export type Language = 'de' | 'en';
 
 export interface Category {
@@ -19,11 +18,8 @@ export interface RoundData {
   task: TaskRule;
   letter: string | null;
   readerId: string;
-  buzzerState: BuzzerState;
-  buzzerOrder: string[];
   winnerId: string | null;
   revealed: boolean;
-  timerEnd: number | null;
 }
 
 export interface Player {
@@ -34,11 +30,11 @@ export interface Player {
   connected: boolean;
   isHost: boolean;
   socketId: string | null;
-  hasBuzzed: boolean;
 }
 
 export interface Room {
   code: string;
+  ownerId: string | null;
   hostId: string | null;
   phase: Phase;
   players: Record<string, Player>;
@@ -61,6 +57,7 @@ export interface RoundResult {
 
 export interface RoomView {
   code: string;
+  ownerId: string | null;
   phase: Phase;
   players: PlayerView[];
   language: Language;
@@ -76,7 +73,6 @@ export interface PlayerView {
   score: number;
   connected: boolean;
   isHost: boolean;
-  hasBuzzed: boolean;
 }
 
 export interface RoundView {
@@ -85,11 +81,8 @@ export interface RoundView {
   task: TaskRule | null;
   letter: string | null;
   readerId: string;
-  buzzerState: BuzzerState;
-  buzzerOrder: string[];
   winnerId: string | null;
   revealed: boolean;
-  timerEnd: number | null;
 }
 
 export interface StoredSession {

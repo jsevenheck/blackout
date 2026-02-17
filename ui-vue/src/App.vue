@@ -39,10 +39,6 @@ function initSocket() {
   socket.on('roomUpdate', (room) => {
     store.setRoom(room);
   });
-
-  socket.on('buzzerAlert', () => {
-    // Could play a sound here
-  });
 }
 
 function handleCreate(name: string) {
@@ -109,8 +105,8 @@ function handleReveal() {
   socket.emit('revealCategory', { roomCode: store.roomCode, playerId: store.playerId });
 }
 
-function handleBuzz() {
-  socket.emit('buzz', { roomCode: store.roomCode, playerId: store.playerId });
+function handleReroll() {
+  socket.emit('rerollPrompt', { roomCode: store.roomCode, playerId: store.playerId });
 }
 
 function handleSelectWinner(winnerId: string) {
@@ -196,7 +192,7 @@ onMounted(() => {
       <GameRound
         v-else-if="store.phase === 'playing'"
         @reveal="handleReveal"
-        @buzz="handleBuzz"
+        @reroll="handleReroll"
         @select-winner="handleSelectWinner"
         @skip="handleSkip"
       />

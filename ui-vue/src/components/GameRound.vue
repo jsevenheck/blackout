@@ -1,74 +1,51 @@
 <script setup lang="ts">
-import { computed, ref, onMounted, onUnmounted } from 'vue';
+import { computed } from 'vue';
 import { useGameStore } from '../stores/game';
 
 const store = useGameStore();
 
 defineEmits<{
   reveal: [];
-  buzz: [];
+  reroll: [];
   selectWinner: [winnerId: string];
   skip: [];
 }>();
 
 const round = computed(() => store.currentRound);
 const isReader = computed(() => store.isReader);
-const timeLeft = ref(60);
-let timerInterval: ReturnType<typeof setInterval> | null = null;
-
-function updateTimer() {
-  if (round.value?.timerEnd) {
-    const remaining = Math.max(0, Math.ceil((round.value.timerEnd - Date.now()) / 1000));
-    timeLeft.value = remaining;
-    if (remaining <= 0 && timerInterval) {
-      clearInterval(timerInterval);
-      timerInterval = null;
-    }
-  }
-}
-
-onMounted(() => {
-  timerInterval = setInterval(updateTimer, 200);
-});
-
-onUnmounted(() => {
-  if (timerInterval) clearInterval(timerInterval);
-});
-
-const self = computed(() => store.self);
-const hasBuzzed = computed(() => self.value?.hasBuzzed ?? false);
-
-const buzzerPlayers = computed(() => {
-  if (!round.value) return [];
-  return round.value.buzzerOrder
-    .map((id) => store.room?.players.find((p) => p.id === id))
-    .filter(Boolean);
-});
+const canSkip = computed(() => store.isHost || store.isOwner);
 
 const taskText = computed(() => {
   if (!round.value?.task) return '';
   const letter = round.value.letter ?? '';
   return round.value.task.text.replace('{letter}', letter);
 });
+
+const selectablePlayers = computed(() => {
+  const currentRound = round.value;
+  const players = store.room?.players ?? [];
+  if (!currentRound) return [];
+  return players.filter((player) => player.id !== currentRound.readerId);
+});
 </script>
 
 <template>
   <div class="game-round">
-    <!-- Pre-reveal: Reader sees category, others wait -->
+    <!-- Pre-reveal: Host sees category, others wait -->
     <template v-if="!round?.revealed">
       <div
         v-if="isReader"
         class="reader-view"
       >
         <p class="label">
-          You are the Reader!
+          You are the Host!
         </p>
         <div class="category-card">
-          <p class="task-text">
-            {{ taskText }}
-          </p>
           <p class="category-name">
             {{ round?.category?.name }}
+          </p>
+          <p class="task-text">
+            {{ taskText }}
           </p>
           <p
             v-if="round?.letter"
@@ -83,8 +60,21 @@ const taskText = computed(() => {
         >
           Reveal!
         </button>
+        <button
+          class="btn btn-reroll"
+          @click="$emit('reroll')"
+        >
+          New Task + Category
+        </button>
+        <button
+          v-if="canSkip"
+          class="btn btn-skip"
+          @click="$emit('skip')"
+        >
+          Skip Round
+        </button>
         <p class="hint">
-          Click to reveal the category to all players
+          Click to reveal the prompt to all players
         </p>
       </div>
       <div
@@ -92,23 +82,30 @@ const taskText = computed(() => {
         class="waiting-view"
       >
         <p class="label">
-          Waiting for the reader to reveal...
+          Waiting for the host to reveal...
         </p>
         <p class="reader-name">
-          Reader: {{ store.room?.players.find((p) => p.id === round?.readerId)?.name }}
+          Host: {{ store.room?.players.find((p) => p.id === round?.readerId)?.name }}
         </p>
+        <button
+          v-if="canSkip"
+          class="btn btn-skip"
+          @click="$emit('skip')"
+        >
+          Skip Round
+        </button>
       </div>
     </template>
 
-    <!-- Post-reveal: Buzzer phase -->
+    <!-- Post-reveal: Host picks the winner -->
     <template v-else>
       <div class="revealed-view">
         <div class="category-display">
-          <p class="task-text">
-            {{ taskText }}
-          </p>
           <p class="category-name">
             {{ round?.category?.name }}
+          </p>
+          <p class="task-text">
+            {{ taskText }}
           </p>
           <p
             v-if="round?.letter"
@@ -119,49 +116,34 @@ const taskText = computed(() => {
         </div>
 
         <div
-          class="timer"
-          :class="{ urgent: timeLeft <= 10 }"
+          v-if="isReader"
+          class="answers-list"
         >
-          {{ timeLeft }}s
-        </div>
-
-        <!-- Buzzer for non-readers -->
-        <button
-          v-if="!isReader && round?.buzzerState === 'open'"
-          class="btn btn-buzzer"
-          :class="{ buzzed: hasBuzzed }"
-          :disabled="hasBuzzed"
-          @click="$emit('buzz')"
-        >
-          {{ hasBuzzed ? 'BUZZED!' : 'BUZZ' }}
-        </button>
-
-        <!-- Buzzer order -->
-        <div
-          v-if="buzzerPlayers.length > 0"
-          class="buzzer-order"
-        >
-          <h3>Buzzer Order</h3>
+          <h3>Who was correct?</h3>
           <div
-            v-for="(player, index) in buzzerPlayers"
-            :key="player!.id"
-            class="buzzer-entry"
+            v-for="player in selectablePlayers"
+            :key="player.id"
+            class="answer-entry"
           >
-            <span class="buzzer-rank">#{{ index + 1 }}</span>
-            <span class="buzzer-name">{{ player!.name }}</span>
+            <span class="answer-name">{{ player.name }}</span>
             <button
-              v-if="isReader && round?.buzzerState === 'open'"
               class="btn btn-correct"
-              @click="$emit('selectWinner', player!.id)"
+              @click="$emit('selectWinner', player.id)"
             >
               Correct!
             </button>
           </div>
         </div>
+        <p
+          v-else
+          class="hint"
+        >
+          Speak your answer out loud. Host will select the correct player.
+        </p>
 
-        <!-- Reader controls -->
+        <!-- Host controls -->
         <div
-          v-if="isReader"
+          v-if="canSkip"
           class="reader-controls"
         >
           <button
@@ -237,30 +219,6 @@ const taskText = computed(() => {
   text-shadow: 0 0 30px rgba(139, 92, 246, 0.5);
 }
 
-.timer {
-  font-size: 2rem;
-  font-weight: 700;
-  color: #d4d4d8;
-  padding: 0.5rem 1.5rem;
-  border-radius: 8px;
-  background: #27272a;
-}
-
-.timer.urgent {
-  color: #ef4444;
-  animation: pulse 1s infinite;
-}
-
-@keyframes pulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.5;
-  }
-}
-
 .btn {
   padding: 0.75rem 2rem;
   border: none;
@@ -283,71 +241,55 @@ const taskText = computed(() => {
   transform: scale(1.05);
 }
 
-.btn-buzzer {
-  background: #ef4444;
+.btn-reroll {
+  background: #1f2937;
+  color: #d1d5db;
+  border: 1px solid #374151;
+}
+
+.btn-reroll:hover {
+  background: #273244;
   color: #fff;
-  font-size: 2rem;
-  padding: 1.5rem 4rem;
-  border-radius: 50%;
-  width: 150px;
-  height: 150px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 0 30px rgba(239, 68, 68, 0.4);
 }
 
-.btn-buzzer:hover:not(:disabled) {
-  background: #dc2626;
-  transform: scale(1.1);
-}
-
-.btn-buzzer.buzzed {
-  background: #22c55e;
-  box-shadow: 0 0 30px rgba(34, 197, 94, 0.4);
-}
-
-.btn-buzzer:disabled {
-  cursor: default;
-}
-
-.buzzer-order {
+.answers-list {
   width: 100%;
-  max-width: 320px;
+  max-width: min(92vw, 560px);
 }
 
-.buzzer-order h3 {
+.answers-list h3 {
   color: #a1a1aa;
   margin-bottom: 0.5rem;
   text-align: center;
 }
 
-.buzzer-entry {
+.answer-entry {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 0.5rem 0.75rem;
+  padding: 0.85rem 1rem;
   background: #27272a;
-  border-radius: 6px;
+  border-radius: 10px;
   margin-bottom: 0.5rem;
 }
 
-.buzzer-rank {
-  color: #8b5cf6;
-  font-weight: 700;
-  min-width: 2rem;
-}
-
-.buzzer-name {
+.answer-name {
   flex: 1;
   color: #fff;
+  min-width: 0;
+  font-size: 1.65rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .btn-correct {
   background: #22c55e;
   color: #fff;
-  padding: 0.4rem 0.75rem;
-  font-size: 0.85rem;
+  padding: 0.6rem 0.95rem;
+  font-size: 1rem;
+  border-radius: 12px;
+  min-width: 116px;
 }
 
 .btn-correct:hover {
@@ -378,5 +320,25 @@ const taskText = computed(() => {
 .hint {
   color: #71717a;
   font-size: 0.875rem;
+}
+
+@media (max-width: 640px) {
+  .answers-list {
+    max-width: 100%;
+  }
+
+  .answer-entry {
+    padding: 0.7rem 0.8rem;
+  }
+
+  .answer-name {
+    font-size: 1.2rem;
+  }
+
+  .btn-correct {
+    min-width: 96px;
+    padding: 0.5rem 0.8rem;
+    font-size: 0.95rem;
+  }
 }
 </style>

@@ -1,14 +1,15 @@
 # Blackout
 
-Blackout is a real-time multiplayer party game where players race to buzz in with a valid answer
-for a shown category and task prompt (optionally with a required letter).
+Blackout is a real-time multiplayer party game where the host reveals a category/task prompt
+(optionally with a required letter), players answer out loud, and the host marks the correct player.
 
 ## Features
 
 - Real-time multiplayer game flow with Socket.IO
-- Reader-driven reveal flow and buzzer ordering
-- Round-based scoring with automatic next-reader logic
+- Host-driven reveal flow and manual winner selection
+- Round-based scoring with winner-based host handover
 - SQLite-backed categories + tasks
+- Optional pre-reveal prompt reroll (new task/category and letter if required)
 - Host-configurable language (`de`/`en`) and excluded letters
 - Session resume and reconnection support
 - CSV-driven DB defaults bootstrap on server startup

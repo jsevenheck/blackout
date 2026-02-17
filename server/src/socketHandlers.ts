@@ -1,12 +1,11 @@
 import type { Server, Socket } from 'socket.io';
 import type { ClientToServerEvents, ServerToClientEvents } from '../../core/src/events';
-import type { Language } from '../../core/src/types';
+import type { Language, Room } from '../../core/src/types';
 import {
   MIN_PLAYERS,
   MIN_ROUNDS,
   MAX_ROUNDS,
   ROUND_END_DISPLAY_MS,
-  ROUND_TIMER_MS,
   DEFAULT_EXCLUDED_LETTERS,
 } from '../../core/src/constants';
 import {
@@ -26,7 +25,7 @@ import {
 import {
   startNewRound,
   revealCategory,
-  handleBuzz,
+  rerollCurrentPrompt,
   selectWinner as selectRoundWinner,
   finalizeRound,
   getNextReader,
@@ -34,12 +33,9 @@ import {
   isLastRound,
 } from './managers/roundManager';
 import { addPoint, resetScores } from './managers/scoreManager';
-import { broadcastRoom, broadcastBuzzerAlert, sendRoomToPlayer } from './managers/broadcastManager';
+import { broadcastRoom, sendRoomToPlayer } from './managers/broadcastManager';
 
 type BlackoutSocket = Socket<ClientToServerEvents, ServerToClientEvents>;
-
-// Active round timers
-const roundTimers = new Map<string, NodeJS.Timeout>();
 
 function isLanguage(value: string): value is Language {
   return value === 'de' || value === 'en';
@@ -57,12 +53,16 @@ function normalizeExcludedLetters(letters: string[]): string[] {
   return result.length > 0 ? result : [...DEFAULT_EXCLUDED_LETTERS];
 }
 
-function clearRoundTimer(roomCode: string): void {
-  const timer = roundTimers.get(roomCode);
-  if (timer) {
-    clearTimeout(timer);
-    roundTimers.delete(roomCode);
+function assignHost(room: Room, newHostId: string): void {
+  const nextHost = room.players[newHostId];
+  if (!nextHost) return;
+
+  if (room.hostId && room.players[room.hostId]) {
+    room.players[room.hostId].isHost = false;
   }
+
+  room.hostId = newHostId;
+  nextHost.isHost = true;
 }
 
 export function registerBlackout(io: Server): void {
@@ -80,7 +80,6 @@ export function registerBlackout(io: Server): void {
     const room = getRoom(roomCode);
     if (!room) return;
 
-    clearRoundTimer(roomCode);
     finalizeRound(room);
 
     if (isLastRound(room)) {
@@ -104,20 +103,6 @@ export function registerBlackout(io: Server): void {
       startNewRound(room2, nextReader);
       broadcastRoom(nsp, room2);
     }, ROUND_END_DISPLAY_MS);
-  }
-
-  function startRoundTimer(roomCode: string): void {
-    clearRoundTimer(roomCode);
-    roundTimers.set(
-      roomCode,
-      setTimeout(() => {
-        const room = getRoom(roomCode);
-        if (!room || !room.currentRound) return;
-        // Timer expired: skip round (no winner)
-        room.currentRound.buzzerState = 'locked';
-        advanceRound(roomCode);
-      }, ROUND_TIMER_MS)
-    );
   }
 
   nsp.on('connection', (socket: BlackoutSocket) => {
@@ -144,9 +129,6 @@ export function registerBlackout(io: Server): void {
       const room = getRoom(code);
       if (!room) {
         return cb({ ok: false, error: 'Room not found' });
-      }
-      if (room.phase !== 'lobby') {
-        return cb({ ok: false, error: 'Game already in progress' });
       }
 
       // Check duplicate name
@@ -245,6 +227,9 @@ export function registerBlackout(io: Server): void {
       if (player.socketId) {
         deleteSocketIndex(player.socketId);
       }
+      if (room.ownerId === data.playerId) {
+        room.ownerId = null;
+      }
 
       // If host left, assign new host
       if (room.hostId === data.playerId) {
@@ -252,6 +237,9 @@ export function registerBlackout(io: Server): void {
         if (remaining.length > 0) {
           remaining[0].isHost = true;
           room.hostId = remaining[0].id;
+          if (room.currentRound) {
+            room.currentRound.readerId = remaining[0].id;
+          }
         } else {
           room.hostId = null;
         }
@@ -300,7 +288,7 @@ export function registerBlackout(io: Server): void {
       }
 
       transitionToPlaying(room);
-      const readerId = getRandomReader(room);
+      const readerId = room.hostId ?? getRandomReader(room);
       startNewRound(room, readerId);
       broadcastRoom(nsp, room);
       cb({ ok: true });
@@ -309,42 +297,42 @@ export function registerBlackout(io: Server): void {
     socket.on('revealCategory', (data) => {
       const room = getRoom(data.roomCode);
       if (!room || !room.currentRound) return;
-      if (room.currentRound.readerId !== data.playerId) return;
+      if (room.hostId !== data.playerId) return;
       if (room.currentRound.revealed) return;
 
       revealCategory(room);
-      startRoundTimer(data.roomCode);
       broadcastRoom(nsp, room);
     });
 
-    socket.on('buzz', (data) => {
+    socket.on('rerollPrompt', (data) => {
       const room = getRoom(data.roomCode);
-      if (!room) return;
+      if (!room || !room.currentRound) return;
+      if (room.hostId !== data.playerId) return;
+      if (room.currentRound.revealed) return;
 
-      const buzzed = handleBuzz(room, data.playerId);
-      if (buzzed) {
-        broadcastBuzzerAlert(nsp, room);
-        broadcastRoom(nsp, room);
-      }
+      rerollCurrentPrompt(room);
+      broadcastRoom(nsp, room);
     });
 
     socket.on('selectWinner', (data) => {
       const room = getRoom(data.roomCode);
       if (!room || !room.currentRound) return;
-      if (room.currentRound.readerId !== data.playerId) return;
-      if (!room.currentRound.buzzerOrder.includes(data.winnerId)) return;
+      if (room.hostId !== data.playerId) return;
+      if (!room.currentRound.revealed) return;
+      if (!room.players[data.winnerId]) return;
+      if (data.winnerId === room.currentRound.readerId) return;
 
       selectRoundWinner(room, data.winnerId);
       addPoint(room, data.winnerId);
+      assignHost(room, data.winnerId);
       advanceRound(data.roomCode);
     });
 
     socket.on('skipRound', (data) => {
       const room = getRoom(data.roomCode);
       if (!room || !room.currentRound) return;
-      if (room.currentRound.readerId !== data.playerId) return;
-
-      room.currentRound.buzzerState = 'locked';
+      const canSkip = room.hostId === data.playerId || room.ownerId === data.playerId;
+      if (!canSkip) return;
       advanceRound(data.roomCode);
     });
 
@@ -353,7 +341,6 @@ export function registerBlackout(io: Server): void {
       if (!room) return;
       if (room.hostId !== data.playerId) return;
 
-      clearRoundTimer(data.roomCode);
       resetScores(room);
       transitionToLobby(room);
       broadcastRoom(nsp, room);

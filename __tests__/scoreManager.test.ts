@@ -9,6 +9,7 @@ import type { Room } from '../core/src/types';
 function makeRoom(): Room {
   return {
     code: 'TEST',
+    ownerId: 'p1',
     hostId: 'p1',
     phase: 'playing',
     players: {
@@ -20,7 +21,6 @@ function makeRoom(): Room {
         connected: true,
         isHost: true,
         socketId: 's1',
-        hasBuzzed: false,
       },
       p2: {
         id: 'p2',
@@ -30,7 +30,6 @@ function makeRoom(): Room {
         connected: true,
         isHost: false,
         socketId: 's2',
-        hasBuzzed: false,
       },
       p3: {
         id: 'p3',
@@ -40,7 +39,6 @@ function makeRoom(): Room {
         connected: true,
         isHost: false,
         socketId: 's3',
-        hasBuzzed: false,
       },
     },
     language: 'de',

@@ -30,6 +30,7 @@ Core state model highlights:
 - `Room.phase`: `lobby | playing | roundEnd | ended`
 - `Room.language`: `de | en` (host configurable in lobby)
 - `Room.excludedLetters`: host configurable letter blacklist
+- `Room.ownerId`: original room creator (can skip rounds even if not current host)
 - `Room.currentRound`: active round payload
 - `Room.roundHistory`: completed rounds
 - `Room.usedCategoryLetterPairs`: uniqueness tracking for category/task/letter prompts
@@ -49,7 +50,7 @@ Core state model highlights:
 ### Managers
 
 - `phaseManager.ts`: phase transitions only
-- `roundManager.ts`: round lifecycle (start, reveal, buzz, finalize)
+- `roundManager.ts`: round lifecycle (start, reroll, reveal, finalize)
 - `scoreManager.ts`: point updates, leaderboard, winner calculation
 - `categoryManager.ts`: random category/task/letter prompt from SQLite
 - `broadcastManager.ts`: per-player room sanitization + emits
@@ -61,10 +62,10 @@ Core state model highlights:
 Responsibilities:
 
 - parse handshake auth (`sessionId`, `joinToken`, `playerId`)
-- validate input and permissions (host/reader checks)
+- validate input and permissions (host / owner checks)
 - call managers and mutate room state
 - broadcast sanitized state
-- manage round timer and auto-advance
+- manage round-to-round phase progression
 
 ## Vue Client Architecture (`ui-vue/src`)
 
@@ -86,7 +87,7 @@ Responsibilities:
 
 - no room: landing screen
 - `lobby`: setup and start
-- `playing`: gameplay + buzzer
+- `playing`: gameplay (host reveal + winner selection)
 - `roundEnd`: short scoreboard
 - `ended`: final winner screen
 
@@ -115,13 +116,13 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-  A[startGame by host] --> B[startNewRound with reader]
-  B --> C[Reader sees category + task + optional letter]
-  C --> D[Reader emits revealCategory]
-  D --> E[buzzer opens + timer starts]
-  E --> F[Players emit buzz]
-  F --> G[buzzerOrder updated]
-  G --> H[Reader emits selectWinner OR skipRound]
+  A[startGame by host] --> B[startNewRound with host as reader]
+  B --> C[Host sees category + task + optional letter]
+  C --> D[Optional rerollPrompt before reveal]
+  D --> E[Host emits revealCategory]
+  E --> F[Players answer out loud]
+  F --> G[Host emits selectWinner, host or owner emits skipRound]
+  G --> H[selectWinner reassigns host to winner]
   H --> I[finalizeRound]
   I --> J{last round?}
   J -->|no| K[phase roundEnd then next round]
@@ -148,14 +149,14 @@ Rules:
 
 - remove internal player fields (`resumeToken`, `socketId`)
 - show category/task/letter only when:
-  - player is current reader, or
+  - player is current host/reader, or
   - round already revealed
 - emit personalized `RoomView` per player socket
 
 Example behavior before reveal:
 
 ```ts
-const isReader = round.readerId === playerId;
+const isReader = room.hostId === playerId;
 const showPrompt = isReader || round.revealed;
 
 return {
