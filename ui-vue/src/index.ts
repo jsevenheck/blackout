@@ -8,5 +8,6 @@ export const manifest = {
 };
 
 export { GameComponent };
+export default GameComponent;
 export type { RoomView, PlayerView } from '@shared/types';
 export type { ClientToServerEvents, ServerToClientEvents } from '@shared/events';

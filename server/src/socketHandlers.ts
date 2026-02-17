@@ -65,8 +65,8 @@ function assignHost(room: Room, newHostId: string): void {
   nextHost.isHost = true;
 }
 
-export function registerBlackout(io: Server): void {
-  const nsp = io.of('/g/blackout');
+export function registerBlackout(io: Server, namespace = '/g/blackout'): void {
+  const nsp = io.of(namespace);
 
   nsp.use((socket, next) => {
     const auth = socket.handshake.auth || {};

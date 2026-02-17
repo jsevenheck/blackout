@@ -2,7 +2,24 @@ import Database, { type Database as DatabaseType } from 'better-sqlite3';
 import { existsSync, mkdirSync, readFileSync } from 'fs';
 import path from 'path';
 
-const configuredDbPath = process.env.DB_PATH || path.join('server', 'src', 'db', 'blackout.sqlite');
+function resolveDefaultDbPath(): string {
+  const candidates = [
+    path.join('server', 'src', 'db', 'blackout.sqlite'),
+    path.join('games', 'blackout', 'server', 'src', 'db', 'blackout.sqlite'),
+    path.join('dist', 'standalone-server', 'server', 'src', 'db', 'blackout.sqlite'),
+  ];
+
+  for (const candidate of candidates) {
+    const absolute = path.join(process.cwd(), candidate);
+    if (existsSync(path.dirname(absolute))) {
+      return candidate;
+    }
+  }
+
+  return candidates[0];
+}
+
+const configuredDbPath = process.env.DB_PATH || resolveDefaultDbPath();
 const dbPath = path.isAbsolute(configuredDbPath)
   ? configuredDbPath
   : path.join(process.cwd(), configuredDbPath);
@@ -17,6 +34,7 @@ function readSqlFile(fileName: 'schema.sql'): string {
   const candidates = [
     path.join(__dirname, fileName),
     path.join(process.cwd(), 'server', 'src', 'db', fileName),
+    path.join(process.cwd(), 'games', 'blackout', 'server', 'src', 'db', fileName),
     path.join(process.cwd(), 'dist', 'standalone-server', 'server', 'src', 'db', fileName),
   ];
 
@@ -85,6 +103,7 @@ function readCsvRows(fileName: string): Record<string, string>[] {
   const candidates = [
     path.join(__dirname, 'data', fileName),
     path.join(process.cwd(), 'server', 'src', 'db', 'data', fileName),
+    path.join(process.cwd(), 'games', 'blackout', 'server', 'src', 'db', 'data', fileName),
     path.join(process.cwd(), 'dist', 'standalone-server', 'server', 'src', 'db', 'data', fileName),
   ];
 
