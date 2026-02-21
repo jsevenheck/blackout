@@ -125,29 +125,7 @@ onMounted(() => {
   initSocket();
 
   // Try to resume session
-  const session = store.loadSession();
-  if (session) {
-    store.playerId = session.playerId;
-    store.playerName = session.name;
-    store.roomCode = session.roomCode;
-    store.resumeToken = session.resumeToken;
-
-    socket.on('connect', () => {
-      socket.emit(
-        'resumePlayer',
-        {
-          roomCode: session.roomCode,
-          playerId: session.playerId,
-          resumeToken: session.resumeToken,
-        },
-        (res) => {
-          if (!res.ok) {
-            store.clearSession();
-          }
-        }
-      );
-    });
-  } else if (isEmbedded && props.playerName && props.sessionId) {
+  if (isEmbedded && props.playerName && props.sessionId) {
     socket.on('connect', () => {
       socket.emit(
         'autoJoinRoom',
@@ -166,23 +144,43 @@ onMounted(() => {
         }
       );
     });
+  } else {
+    const session = store.loadSession();
+    if (session) {
+      store.playerId = session.playerId;
+      store.playerName = session.name;
+      store.roomCode = session.roomCode;
+      store.resumeToken = session.resumeToken;
+
+      socket.on('connect', () => {
+        socket.emit(
+          'resumePlayer',
+          {
+            roomCode: session.roomCode,
+            playerId: session.playerId,
+            resumeToken: session.resumeToken,
+          },
+          (res) => {
+            if (!res.ok) {
+              store.clearSession();
+            }
+          }
+        );
+      });
+    }
   }
 });
 </script>
 
 <template>
   <div class="app">
-    <Header
-      v-if="store.room"
-      @leave="handleLeave"
-    />
+    <Header v-if="store.room" @leave="handleLeave" />
 
     <main class="main">
-      <Landing
-        v-if="!store.room"
-        @create="handleCreate"
-        @join="handleJoin"
-      />
+      <p v-if="!store.room && isEmbedded" style="text-align: center; margin-top: 2rem">
+        Connecting...
+      </p>
+      <Landing v-else-if="!store.room" @create="handleCreate" @join="handleJoin" />
       <Lobby
         v-else-if="store.phase === 'lobby'"
         @update-max-rounds="handleUpdateMaxRounds"
@@ -197,18 +195,12 @@ onMounted(() => {
         @skip="handleSkip"
       />
       <Scoreboard v-else-if="store.phase === 'roundEnd'" />
-      <GameOver
-        v-else-if="store.phase === 'ended'"
-        @restart="handleRestart"
-      />
+      <GameOver v-else-if="store.phase === 'ended'" @restart="handleRestart" />
     </main>
 
     <PlayersPanel v-if="store.room" />
 
-    <p
-      v-if="error"
-      class="global-error"
-    >
+    <p v-if="error" class="global-error">
       {{ error }}
     </p>
   </div>
