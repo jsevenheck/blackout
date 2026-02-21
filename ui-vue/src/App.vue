@@ -174,13 +174,23 @@ onMounted(() => {
 
 <template>
   <div class="app">
-    <Header v-if="store.room" @leave="handleLeave" />
+    <Header
+      v-if="store.room"
+      @leave="handleLeave"
+    />
 
     <main class="main">
-      <p v-if="!store.room && isEmbedded" style="text-align: center; margin-top: 2rem">
+      <p
+        v-if="!store.room && isEmbedded"
+        style="text-align: center; margin-top: 2rem"
+      >
         Connecting...
       </p>
-      <Landing v-else-if="!store.room" @create="handleCreate" @join="handleJoin" />
+      <Landing
+        v-else-if="!store.room"
+        @create="handleCreate"
+        @join="handleJoin"
+      />
       <Lobby
         v-else-if="store.phase === 'lobby'"
         @update-max-rounds="handleUpdateMaxRounds"
@@ -195,12 +205,18 @@ onMounted(() => {
         @skip="handleSkip"
       />
       <Scoreboard v-else-if="store.phase === 'roundEnd'" />
-      <GameOver v-else-if="store.phase === 'ended'" @restart="handleRestart" />
+      <GameOver
+        v-else-if="store.phase === 'ended'"
+        @restart="handleRestart"
+      />
     </main>
 
     <PlayersPanel v-if="store.room" />
 
-    <p v-if="error" class="global-error">
+    <p
+      v-if="error"
+      class="global-error"
+    >
       {{ error }}
     </p>
   </div>

@@ -40,6 +40,13 @@ function rewriteImports(dir) {
     }
     if (!full.endsWith('.ts') && !full.endsWith('.vue')) continue;
     let content = readFileSync(full, 'utf-8');
+
+    // Inject ESM __dirname polyfill for database.ts
+    if (full.endsWith('database.ts')) {
+      const polyfill = `import { fileURLToPath } from 'url';\nimport { dirname } from 'path';\nconst dir = typeof __dirname !== 'undefined' ? __dirname : dirname(fileURLToPath(import.meta.url));\n`;
+      content = polyfill + content.replaceAll('__dirname', 'dir');
+    }
+
     for (const [from, to] of replacements) {
       content = content.replaceAll(from, to);
     }
@@ -140,10 +147,11 @@ writeJson(join(OUT, 'server', 'package.json'), {
   version: '1.0.0',
   type: 'module',
   main: 'dist/index.js',
+  types: 'src/index.ts',
   exports: {
     '.': {
       import: './dist/index.js',
-      types: './dist/index.d.ts',
+      types: './src/index.ts',
     },
   },
   scripts: {

@@ -73,6 +73,7 @@ export default [
     ignores: [
       '**/dist/**',
       '**/dist-lib/**',
+      '**/game-export/**',
       '**/node_modules/**',
       '**/coverage/**',
       '**/test-results/**',
