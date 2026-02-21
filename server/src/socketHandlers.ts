@@ -234,11 +234,12 @@ export function registerBlackout(io: Server, namespace = '/g/blackout'): void {
       // If host left, assign new host
       if (room.hostId === data.playerId) {
         const remaining = Object.values(room.players);
-        if (remaining.length > 0) {
-          remaining[0].isHost = true;
-          room.hostId = remaining[0].id;
+        const newHost = remaining[0];
+        if (newHost) {
+          newHost.isHost = true;
+          room.hostId = newHost.id;
           if (room.currentRound) {
-            room.currentRound.readerId = remaining[0].id;
+            room.currentRound.readerId = newHost.id;
           }
         } else {
           room.hostId = null;

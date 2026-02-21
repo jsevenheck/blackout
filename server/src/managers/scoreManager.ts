@@ -16,7 +16,7 @@ export function getLeaderboard(room: Room): { id: string; name: string; score: n
 export function getWinners(room: Room): string[] {
   const leaderboard = getLeaderboard(room);
   if (leaderboard.length === 0) return [];
-  const topScore = leaderboard[0].score;
+  const topScore = leaderboard[0]!.score;
   return leaderboard.filter((p) => p.score === topScore).map((p) => p.id);
 }
 

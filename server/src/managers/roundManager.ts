@@ -74,7 +74,8 @@ export function getNextReader(room: Room): string | null {
 
 export function getRandomReader(room: Room): string {
   const playerIds = Object.keys(room.players);
-  return playerIds[Math.floor(Math.random() * playerIds.length)];
+  if (playerIds.length === 0) return '';
+  return playerIds[Math.floor(Math.random() * playerIds.length)]!;
 }
 
 export function isLastRound(room: Room): boolean {

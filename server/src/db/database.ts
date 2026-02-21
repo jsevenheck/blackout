@@ -16,7 +16,7 @@ function resolveDefaultDbPath(): string {
     }
   }
 
-  return candidates[0];
+  return candidates[0] ?? '';
 }
 
 const configuredDbPath = process.env.DB_PATH || resolveDefaultDbPath();
@@ -131,11 +131,15 @@ function readCsvRows(fileName: string): Record<string, string>[] {
     return [];
   }
 
-  const headers = parsedRows[0].map((header) => header.trim());
+  const firstRow = parsedRows[0];
+  const headers = firstRow ? firstRow.map((header) => header.trim()) : [];
   return parsedRows.slice(1).map((cells) => {
     const entry: Record<string, string> = {};
     for (let i = 0; i < headers.length; i++) {
-      entry[headers[i]] = (cells[i] ?? '').trim();
+      const header = headers[i];
+      if (header) {
+        entry[header] = (cells[i] ?? '').trim();
+      }
     }
     return entry;
   });
@@ -199,7 +203,7 @@ function seedDefaultsFromCsv(shouldSeed: {
     );
     const tx = db.transaction((rows: Record<string, string>[]) => {
       for (const row of rows) {
-        const letter = normalizeLetter(row.letter);
+        const letter = normalizeLetter(row.letter ?? '');
         if (!letter) continue;
         insertLetter.run(letter);
       }
