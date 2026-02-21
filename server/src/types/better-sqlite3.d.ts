@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 declare module 'better-sqlite3' {
   export interface Database {
     pragma(source: string, options?: any): any;

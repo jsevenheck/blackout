@@ -58,14 +58,16 @@ Architecture layers:
 3. Preserve broadcast sanitization guarantees.
 4. Update unit tests and E2E tests for behavior changes.
 
-## Testing Guidelines
+## Testing & QA Guidelines
 
-Run these from repo root:
+Run these from repo root to ensure CI and Game Hub integration passes:
 
 - Unit tests: `pnpm test`
 - E2E tests: `pnpm test:e2e`
-- Type checks: `pnpm typecheck`
+- Type checks: `pnpm typecheck` (Crucial for strict Game Hub monorepo compliance)
 - Lint and format checks: `pnpm lint && pnpm format:check`
+
+**CRITICAL**: Always ensure `pnpm lint` and `pnpm typecheck` pass successfully before finishing a task or committing.
 
 For gameplay or event-contract changes, run unit + E2E.
 

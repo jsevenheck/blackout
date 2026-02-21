@@ -55,8 +55,8 @@ The transform rewrites shared imports in copied `.ts`/`.vue` files:
 
 `ui-vue/src/types/config.ts` defines runtime props expected in embedded mode.
 
-| Prop          | Type     | Purpose                                                       |
-| ------------- | -------- | ------------------------------------------------------------- |
+| Prop          | Type     | Purpose                                                      |
+| ------------- | -------- | ------------------------------------------------------------ |
 | `sessionId`   | `string` | Hub party/session identifier used for `autoJoinRoom` mapping |
 | `joinToken`   | `string` | Handshake token passed via Socket.IO auth                    |
 | `wsNamespace` | `string` | Namespace path (for Blackout: `/g/blackout`)                 |
@@ -122,7 +122,10 @@ Without these two steps, the game package is present in the monorepo but not sel
 
 ## Integration Checklist
 
-1. Build and verify locally (`pnpm typecheck`, `pnpm lint`, `pnpm test`).
+1. Build and verify locally:
+   - `pnpm typecheck` (Checks strict TypeScript rules needed for Game Hub)
+   - `pnpm lint` (Runs ESLint; fix errors beforehand to prevent CI failures)
+   - `pnpm test` and `pnpm test:e2e`
 2. Generate export (`node scripts/transform-for-gamehub.mjs`).
 3. Copy `game-export/blackout` into the Game Hub game registry location.
 4. Register blackout in server + web game registries.
