@@ -33,6 +33,7 @@ db.pragma('foreign_keys = ON');
 function readSqlFile(fileName: 'schema.sql'): string {
   const candidates = [
     path.join(__dirname, fileName),
+    path.join(__dirname, '..', 'src', 'db', fileName),
     path.join(process.cwd(), 'server', 'src', 'db', fileName),
     path.join(process.cwd(), 'games', 'blackout', 'server', 'src', 'db', fileName),
     path.join(process.cwd(), 'dist', 'standalone-server', 'server', 'src', 'db', fileName),
@@ -102,6 +103,7 @@ function parseCsv(text: string, delimiter: string): string[][] {
 function readCsvRows(fileName: string): Record<string, string>[] {
   const candidates = [
     path.join(__dirname, 'data', fileName),
+    path.join(__dirname, '..', 'src', 'db', 'data', fileName),
     path.join(process.cwd(), 'server', 'src', 'db', 'data', fileName),
     path.join(process.cwd(), 'games', 'blackout', 'server', 'src', 'db', 'data', fileName),
     path.join(process.cwd(), 'dist', 'standalone-server', 'server', 'src', 'db', 'data', fileName),
@@ -116,7 +118,9 @@ function readCsvRows(fileName: string): Record<string, string>[] {
   }
 
   if (!csvContent) {
-    throw new Error(`Could not find CSV seed file "${fileName}". Looked in: ${candidates.join(', ')}`);
+    throw new Error(
+      `Could not find CSV seed file "${fileName}". Looked in: ${candidates.join(', ')}`
+    );
   }
 
   const raw = csvContent.replace(/^\uFEFF/, '');

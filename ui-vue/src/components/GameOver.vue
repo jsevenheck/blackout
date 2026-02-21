@@ -32,7 +32,7 @@ const winners = computed(() => {
           Winner
         </p>
         <h2 class="winner-name">
-          {{ winners[0].name }}
+          {{ winners[0]?.name }}
         </h2>
       </template>
       <template v-else>
