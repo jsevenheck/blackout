@@ -27,9 +27,9 @@ function writeFile(filePath, content) {
 function rewriteImports(dir) {
   const replacements = [
     ['@shared/', '@game-hub/blackout-shared/'],
-    ['../../core/src/', '@game-hub/blackout-shared/'],
-    ['../../../core/src/', '@game-hub/blackout-shared/'],
     ['../../../../core/src/', '@game-hub/blackout-shared/'],
+    ['../../../core/src/', '@game-hub/blackout-shared/'],
+    ['../../core/src/', '@game-hub/blackout-shared/'],
   ];
 
   for (const entry of readdirSync(dir)) {
