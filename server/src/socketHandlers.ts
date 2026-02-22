@@ -1,4 +1,4 @@
-import type { Server, Socket } from 'socket.io';
+import type { Server, Socket, Namespace } from 'socket.io';
 import type { ClientToServerEvents, ServerToClientEvents } from '../../core/src/events';
 import type { Language, Room } from '../../core/src/types';
 import {
@@ -65,8 +65,8 @@ function assignHost(room: Room, newHostId: string): void {
   nextHost.isHost = true;
 }
 
-export function registerBlackout(io: Server, namespace = '/g/blackout'): void {
-  const nsp = io.of(namespace);
+export function registerBlackout(io: Server, namespace: string | Namespace = '/g/blackout'): void {
+  const nsp = typeof namespace === 'string' ? io.of(namespace) : namespace;
 
   nsp.use((socket, next) => {
     const auth = socket.handshake.auth || {};

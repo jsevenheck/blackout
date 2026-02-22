@@ -28,3 +28,6 @@ server/src/db/*.sqlite-wal
 *.db-shm
 *.db-wal
 .pnpm-store/
+
+# game-hub generation
+game-export/

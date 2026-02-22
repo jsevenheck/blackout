@@ -1,134 +1,70 @@
 # Game Hub Integration
 
-This document explains how to package and run Blackout inside Game Hub, and how that differs from standalone mode.
+This document explains how the Blackout game integrates with the Game Hub platform.
 
-## Transform Script
+## Overview
 
-Run the transform script from repository root:
+The `game-hub` platform uses an automated integration model for Blackout:
 
-```bash
-node scripts/transform-for-gamehub.mjs
-```
+- The hub owns the code transformation process (`scripts/transform-game.mjs` in the hub repository).
+- Games are auto-discovered — no manual registration in the platform files is required.
+- Integration is fully automated via GitHub Actions using the `receive-game-sync` workflow in the `game-hub` repo.
 
-This creates `game-export/blackout` in a Game Hub-style package layout.
+## The Synchronization Process
 
-## Transform Output Structure
+Whenever changes are merged into the `main` branch of the Blackout repository, the `.github/workflows/sync-to-hub.yml` workflow is triggered.
 
-```text
-game-export/blackout/
-+-- web/
-|   +-- src/          # copied from ui-vue/src
-|   +-- package.json
-|   +-- tsconfig.json
-+-- server/
-|   +-- src/          # copied from server/src
-|   +-- package.json
-|   +-- tsconfig.json
-|   +-- tsconfig.build.json
-|   +-- tsup.config.ts
-+-- shared/
-    +-- src/          # copied from core/src
-    +-- package.json
-    +-- tsconfig.json
-    +-- tsconfig.build.json
-    +-- tsup.config.ts
-+-- README.md
-```
+This workflow:
 
-Additional generated files:
+1. Calls the `receive-game-sync` workflow on the `game-hub` repository.
+2. The hub repository checks out the Blackout source code.
+3. The hub runs its internal transformer to adapt Blackout's source into the hub's structure.
+4. A pull request is automatically opened in the `game-hub` repository with the integrated game.
 
-- `server/src/index.ts` (Game Hub plugin entry: `definition`, `register`, `handler`)
-- `shared/src/index.ts` (barrel export)
+### Integration Prerequisites
 
-The transform also removes local SQLite runtime files (`blackout.sqlite*`) from the export.
+For the synchronization to work, the repository must have a secret configured:
 
-## Import Rewrites Performed
+- Name: `GAME_SYNC_TOKEN`
+- Value: A Personal Access Token (or GitHub App token) with `actions:write` permission on the `jsevenheck/game-hub` repository.
 
-The transform rewrites shared imports in copied `.ts`/`.vue` files:
+## Hub Adapter Configuration
 
-- `@shared/*` -> `@game-hub/blackout-shared/*`
-- `../../core/src/*` -> `@game-hub/blackout-shared/*`
-- `../../../core/src/*` -> `@game-hub/blackout-shared/*`
-- `../../../../core/src/*` -> `@game-hub/blackout-shared/*`
+The game defines its entry points and configuration for the Game Hub environment using the following files:
 
-## Hub Integration Props
+### 1. Server Adapter (`server/src/index.ts`)
 
-`ui-vue/src/types/config.ts` defines runtime props expected in embedded mode.
+This file is the permanent hub adapter. It exports:
 
-| Prop          | Type     | Purpose                                                      |
-| ------------- | -------- | ------------------------------------------------------------ |
-| `sessionId`   | `string` | Hub party/session identifier used for `autoJoinRoom` mapping |
-| `joinToken`   | `string` | Handshake token passed via Socket.IO auth                    |
-| `wsNamespace` | `string` | Namespace path (for Blackout: `/g/blackout`)                 |
-| `apiBaseUrl`  | `string` | Optional base URL when hub serves API on another origin/path |
-| `playerId`    | `string` | Stable hub player id                                         |
-| `playerName`  | `string` | Display name used inside game                                |
+- `definition`: Game metadata (`id`, `name`, `minPlayers`, `maxPlayers`).
+- `register`: The setup function which binds the game's `socketHandlers` to the provided Game Hub `Namespace`.
+- `handler`: The combined interface expected by Game Hub.
 
-## Auto-Join (Embedded) vs Standalone Flow
+### 2. Hub Dependencies (`hub.config.json`)
+
+This configuration file at the repository root declares dependencies unique to the hub environment. For Blackout, this includes:
+
+- `better-sqlite3`
+- `@types/better-sqlite3`
+
+### 3. Web UI Manifest (`ui-vue/src/index.ts`)
+
+The library entry file exports:
+
+- `manifest`: Matching the Game Hub UI expectations (`id`, `title`, `minPlayers`, `maxPlayers`).
+- `GameComponent`: The root Vue component for the game.
+
+## Local Development vs. Embedded (Game Hub)
 
 ### Embedded (Game Hub)
 
-- `wsNamespace` is set
-- landing page is skipped
-- client emits `autoJoinRoom({ sessionId, playerId, name })`
-- server resolves or creates room via `sessionId -> roomCode` mapping
+- `wsNamespace` is injected (`/g/blackout`).
+- The standalone landing page is skipped.
+- The client emits `autoJoinRoom({ sessionId, playerId, name })`.
+- The server resolves or creates a room via `sessionId -> roomCode` mapping.
 
 ### Standalone
 
-- `wsNamespace` is undefined
-- landing page shows create/join inputs
-- client uses `createRoom` / `joinRoom`
-- room code sharing is done by players directly
-
-## Library Build
-
-For Game Hub web integration, build the library bundle:
-
-```bash
-pnpm build:lib
-```
-
-Current library entrypoint:
-
-- `ui-vue/src/index.ts`
-
-Exports:
-
-- `manifest`
-- `GameComponent`
-- shared event/type exports for host-side typing
-
-## CI Integration Workflow
-
-Workflow file:
-
-- `.github/workflows/integrate-to-gamehub.yml`
-
-The integration job is intentionally disabled by default.  
-Set repository variable `ENABLE_BLACKOUT_GAMEHUB_INTEGRATION=true` to activate it.
-
-## Game Hub Registry Changes
-
-After copying `game-export/blackout` to `game-hub/games/blackout`, register the game in both registries:
-
-1. Server registry (`game-hub/apps/platform-server/src/index.ts`)
-   - import `handler` from `@game-hub/blackout-server`
-   - call `registerGame(blackoutHandler)`
-2. Web registry (`game-hub/apps/platform-web/src/gameRegistry.ts`)
-   - import game UI from `@game-hub/blackout-web`
-   - call `registerGameUI(...)` with definition `{ id: 'blackout', ... }`
-
-Without these two steps, the game package is present in the monorepo but not selectable/runnable in the platform UI.
-
-## Integration Checklist
-
-1. Build and verify locally:
-   - `pnpm typecheck` (Checks strict TypeScript rules needed for Game Hub)
-   - `pnpm lint` (Runs ESLint; fix errors beforehand to prevent CI failures)
-   - `pnpm test` and `pnpm test:e2e`
-2. Generate export (`node scripts/transform-for-gamehub.mjs`).
-3. Copy `game-export/blackout` into the Game Hub game registry location.
-4. Register blackout in server + web game registries.
-5. Ensure host mounts `GameComponent` with required embedded props.
-6. Ensure server registers namespace `/g/blackout`.
-7. Validate reconnect behavior using `resumeToken` and `autoJoinRoom`.
+- `wsNamespace` is undefined.
+- The client uses `createRoom` / `joinRoom` from the standard landing UI.
+- Room code sharing is done by players directly.
