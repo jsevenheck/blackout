@@ -8,7 +8,7 @@ The `game-hub` platform uses an automated integration model for Blackout:
 
 - The hub owns the code transformation process (`scripts/transform-game.mjs` in the hub repository).
 - Games are auto-discovered — no manual registration in the platform files is required.
-- Integration is fully automated via GitHub Actions using the `receive-game-sync` workflow in the `game-hub` repo.
+- Integration is fully automated via GitHub Actions using the `receive-game-sync.yml` workflow file in the `game-hub` repo.
 
 ## The Synchronization Process
 
@@ -16,7 +16,7 @@ Whenever changes are merged into the `main` branch of the Blackout repository, t
 
 This workflow:
 
-1. Calls the `receive-game-sync` workflow on the `game-hub` repository.
+1. Calls the `receive-game-sync.yml` workflow on the `game-hub` repository.
 2. The hub repository checks out the Blackout source code.
 3. The hub runs its internal transformer to adapt Blackout's source into the hub's structure.
 4. A pull request is automatically opened in the `game-hub` repository with the integrated game.
