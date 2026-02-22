@@ -57,8 +57,11 @@ function assignHost(room: Room, newHostId: string): void {
   const nextHost = room.players[newHostId];
   if (!nextHost) return;
 
-  if (room.hostId && room.players[room.hostId]) {
-    room.players[room.hostId].isHost = false;
+  if (room.hostId) {
+    const currentHost = room.players[room.hostId];
+    if (currentHost) {
+      currentHost.isHost = false;
+    }
   }
 
   room.hostId = newHostId;

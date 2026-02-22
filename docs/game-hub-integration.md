@@ -45,6 +45,7 @@ This file is the permanent hub adapter. It exports:
 This configuration file at the repository root declares dependencies unique to the hub environment. For Blackout, this includes:
 
 - `better-sqlite3`
+- `nanoid`
 - `@types/better-sqlite3`
 
 ### 3. Web UI Manifest (`ui-vue/src/index.ts`)
