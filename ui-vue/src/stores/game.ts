@@ -3,7 +3,7 @@ import type { RoomView, StoredSession } from '@shared/types';
 
 const SESSION_KEY = 'blackout.session';
 
-export const useGameStore = defineStore('game', {
+export const useGameStore = defineStore('blackout-game', {
   state: () => ({
     room: null as RoomView | null,
     roomCode: '',
